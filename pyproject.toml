@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "offline-ai-presentation-factory"
 version = "0.1.0"
 description = "Offline agentic AI desktop app: PyQt frontend + python-pptx factory"

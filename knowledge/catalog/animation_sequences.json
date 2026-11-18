@@ -1,0 +1,380 @@
+{
+  "animation_sequences": [
+    {
+      "id": "progressive_build",
+      "name": "Progressive Build",
+      "category": "General",
+      "description": "Reveal headline, structure, details and takeaway in stages.",
+      "steps": ["title_and_context", "main_structure", "supporting_details", "evidence_and_takeaway"],
+      "default_intensity": "balanced"
+    },
+    {
+      "id": "left_to_right_process",
+      "name": "Left-to-Right Process Flow",
+      "category": "Engineering",
+      "description": "Reveal process stages in directional order.",
+      "steps": ["process_start", "stage_one", "stage_two", "stage_three", "process_output"],
+      "default_intensity": "balanced"
+    },
+    {
+      "id": "engineering_exploded_assembly",
+      "name": "Engineering Exploded Assembly",
+      "category": "Engineering",
+      "description": "Reveal components from base to final assembly.",
+      "steps": ["base_component", "primary_components", "secondary_components", "connectors_and_fasteners", "assembled_result"],
+      "default_intensity": "balanced"
+    },
+    {
+      "id": "layered_system_architecture",
+      "name": "Layer-by-Layer System Architecture",
+      "category": "Engineering",
+      "description": "Reveal boundaries, layers, integrations and data flow.",
+      "steps": ["system_boundary", "input_layer", "service_layer", "data_layer", "integrations_security", "data_flow"],
+      "default_intensity": "balanced"
+    },
+    {
+      "id": "circuit_signal_propagation",
+      "name": "Circuit Signal Propagation",
+      "category": "Engineering",
+      "description": "Trace signal through components and outputs.",
+      "steps": ["circuit_overview", "input_source", "processing_components", "signal_path", "output_response"],
+      "default_intensity": "dynamic"
+    },
+    {
+      "id": "data_pipeline_etl",
+      "name": "Data Pipeline / ETL Flow",
+      "category": "Engineering",
+      "description": "Reveal extraction, transformation, validation, storage and consumption.",
+      "steps": ["source_systems", "extraction", "transformation", "validation", "storage", "consumption"],
+      "default_intensity": "balanced"
+    },
+    {
+      "id": "timeline_milestone_reveal",
+      "name": "Timeline Milestone Reveal",
+      "category": "Planning",
+      "description": "Reveal milestones chronologically, then dependencies.",
+      "steps": ["timeline_axis", "milestone_one", "milestone_two", "milestone_three", "dependencies"],
+      "default_intensity": "subtle"
+    },
+    {
+      "id": "before_after_transformation",
+      "name": "Before / After Transformation",
+      "category": "General",
+      "description": "Show baseline, intervention and comparison.",
+      "steps": ["before_state", "intervention", "after_state", "measured_comparison"],
+      "default_intensity": "balanced"
+    },
+    {
+      "id": "zoom_technical_detail",
+      "name": "Zoom Into Technical Detail",
+      "category": "Engineering",
+      "description": "Move from system overview to component-level detail.",
+      "steps": ["system_overview", "subsystem_focus", "component_detail", "technical_annotation"],
+      "default_intensity": "subtle"
+    },
+    {
+      "id": "branching_decision_tree",
+      "name": "Branching Decision Tree",
+      "category": "Engineering",
+      "description": "Reveal decision criteria, branches and outcomes.",
+      "steps": ["decision_node", "criteria", "branch_a", "branch_b", "outcomes_and_selected_path"],
+      "default_intensity": "balanced"
+    },
+    {
+      "id": "network_node_activation",
+      "name": "Network Node Activation",
+      "category": "Engineering",
+      "description": "Reveal nodes, links, clusters and network flow.",
+      "steps": ["network_topology", "core_nodes", "edge_nodes", "connections", "end_to_end_flow"],
+      "default_intensity": "dynamic"
+    },
+    {
+      "id": "chart_series_reveal",
+      "name": "Chart Series Reveal",
+      "category": "Data",
+      "description": "Introduce axes, baseline, series and annotations.",
+      "steps": ["chart_frame_and_axes", "baseline", "series_one", "additional_series", "annotations_and_takeaway"],
+      "default_intensity": "balanced"
+    },
+    {
+      "id": "structural_assembly",
+      "name": "Construction / Structural Assembly",
+      "category": "Engineering",
+      "description": "Reveal foundation, supports, members and completed frame.",
+      "steps": ["foundation", "supports", "primary_members", "secondary_members", "completed_structure"],
+      "default_intensity": "balanced"
+    },
+    {
+      "id": "formula_derivation",
+      "name": "Formula / Equation Derivation",
+      "category": "Engineering",
+      "description": "Build derivation from known terms to final expression.",
+      "steps": ["known_variables", "starting_equation", "transformation_one", "transformation_two", "final_expression"],
+      "default_intensity": "subtle"
+    },
+    {
+      "id": "focus_spotlight",
+      "name": "Focus / Spotlight Emphasis",
+      "category": "General",
+      "description": "Progressively focus attention on key regions.",
+      "steps": ["full_context", "focus_area_one", "focus_area_two", "key_conclusion"],
+      "default_intensity": "subtle"
+    },
+
+    {
+      "id": "progressive_bullet_reveal",
+      "name": "Progressive Bullet Reveal",
+      "category": "Pareto Choreography",
+      "description": "Header and card appear immediately, then each bullet fades in on click.",
+      "steps": ["container_appear", "header_fade", "bullet_by_bullet", "takeaway"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "frame", "preset": 1, "filter": "appear", "trigger": "withEffect", "duration": 0, "delay": 0},
+          {"group": "header", "preset": 10, "filter": "fade", "trigger": "withEffect", "duration": 250, "delay": 0},
+          {"group": "items", "preset": 10, "filter": "fade", "trigger": "clickEffect", "duration": 300, "delay": 0, "stagger": 0}
+        ]
+      }
+    },
+    {
+      "id": "left_to_right_pipeline_wipe",
+      "name": "Left-to-Right Pipeline Wipe",
+      "category": "Pareto Choreography",
+      "description": "Sequential horizontal wipe across process chevrons and timeline connectors.",
+      "steps": ["frame_wipe", "header_wipe", "stage_one", "stage_two", "stage_three", "output"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "frame", "preset": 22, "subtype": 8, "filter": "wipe(right)", "trigger": "withEffect", "duration": 400, "delay": 0},
+          {"group": "header", "preset": 22, "subtype": 8, "filter": "wipe(right)", "trigger": "withEffect", "duration": 300, "delay": 100},
+          {"group": "items", "preset": 22, "subtype": 8, "filter": "wipe(right)", "trigger": "afterEffect", "duration": 400, "delay": 150, "stagger": 150}
+        ]
+      }
+    },
+    {
+      "id": "cad_blueprint_assembly",
+      "name": "CAD Blueprint Grid Assembly",
+      "category": "Pareto Choreography",
+      "description": "Drafting border splits open, grid hairlines wipe across and the title stamp snaps into place.",
+      "steps": ["border_split", "grid_lines_wipe", "title_stamp_appear", "specification_fade"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "frame", "preset": 16, "subtype": 16, "filter": "wipe(right)", "trigger": "withEffect", "duration": 350, "delay": 0},
+          {"group": "accent", "preset": 22, "filter": "wipe(right)", "trigger": "withEffect", "duration": 250, "delay": 200, "stagger": 60},
+          {"group": "stamp", "preset": 1, "filter": "appear", "trigger": "afterEffect", "duration": 0, "delay": 0},
+          {"group": "items", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 250, "delay": 100, "stagger": 80}
+        ]
+      }
+    },
+    {
+      "id": "hud_telemetry_lock_on",
+      "name": "HUD Telemetry Lock-On",
+      "category": "Pareto Choreography",
+      "description": "Octagonal HUD zooms in, then telemetry bars and header staccato-fade in.",
+      "steps": ["frame_zoom", "telemetry_bars", "header_hexagon", "body_readout"],
+      "default_intensity": "dynamic",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "frame", "preset": 23, "subtype": 16, "filter": "fade", "trigger": "withEffect", "duration": 250, "delay": 0},
+          {"group": "accent", "preset": 1, "filter": "appear", "trigger": "afterEffect", "duration": 0, "delay": 100, "stagger": 120},
+          {"group": "header", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 200, "delay": 120},
+          {"group": "items", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 200, "delay": 100, "stagger": 120}
+        ]
+      }
+    },
+    {
+      "id": "kpi_counter_stagger",
+      "name": "KPI Counter Stagger",
+      "category": "Pareto Choreography",
+      "description": "Three KPI cards rise from the bottom in cascade, then the synthesis panel fades in on click.",
+      "steps": ["kpi_card_one", "kpi_card_two", "kpi_card_three", "synthesis_panel"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "header", "preset": 1, "filter": "appear", "trigger": "withEffect", "duration": 0, "delay": 0},
+          {"group": "items", "preset": 2, "subtype": 4, "filter": "fade", "trigger": "withEffect", "duration": 350, "delay": 0, "stagger": 150},
+          {"group": "frame", "preset": 10, "filter": "fade", "trigger": "clickEffect", "duration": 350, "delay": 0}
+        ]
+      }
+    },
+    {
+      "id": "dual_matrix_opposing_slide",
+      "name": "Dual Matrix Opposing Slide",
+      "category": "Pareto Choreography",
+      "description": "Left panel enters from left, right panel from right, and the VS badge pops in at center.",
+      "steps": ["baseline_from_left", "target_from_right", "vs_badge_pop", "comparison_fade"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "frame", "preset": 2, "subtype": 8, "filter": "fade", "trigger": "withEffect", "duration": 400, "delay": 0, "alternating_subtypes": [8, 2]},
+          {"group": "accent", "preset": 23, "subtype": 16, "filter": "fade", "trigger": "afterEffect", "duration": 250, "delay": 0},
+          {"group": "items", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 250, "delay": 100, "stagger": 100}
+        ]
+      }
+    },
+    {
+      "id": "isometric_layer_rise",
+      "name": "Isometric Layer Stack Rise",
+      "category": "Pareto Choreography",
+      "description": "Bottom diamond rises first, followed by middle and top planes, then connectors wipe right.",
+      "steps": ["base_layer", "middle_layer", "top_layer", "connectors", "specification_card"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "items", "preset": 2, "subtype": 4, "filter": "fade", "trigger": "afterEffect", "duration": 350, "delay": 100, "stagger": 200},
+          {"group": "accent", "preset": 22, "subtype": 8, "filter": "wipe(right)", "trigger": "afterEffect", "duration": 250, "delay": 100, "stagger": 80},
+          {"group": "frame", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 300, "delay": 150}
+        ]
+      }
+    },
+    {
+      "id": "radial_hub_expansion",
+      "name": "Radial Hub-and-Spoke Expansion",
+      "category": "Pareto Choreography",
+      "description": "Central hub zooms out, spoke bridges wipe outward and satellite cards fade in.",
+      "steps": ["hub_zoom", "spokes_outward", "satellite_cards", "flow_labels"],
+      "default_intensity": "dynamic",
+      "native": true,
+      "choreography": {
+        "transition": "morph",
+        "effects": [
+          {"group": "header", "preset": 23, "subtype": 16, "filter": "fade", "trigger": "withEffect", "duration": 350, "delay": 0},
+          {"group": "accent", "preset": 22, "filter": "wipe(right)", "trigger": "afterEffect", "duration": 250, "delay": 0, "stagger": 80},
+          {"group": "items", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 300, "delay": 100, "stagger": 100}
+        ]
+      }
+    },
+    {
+      "id": "concentric_ring_pulse",
+      "name": "Concentric Ring Pulse",
+      "category": "Pareto Choreography",
+      "description": "Core circle zooms in first, then the middle and outer rings pulse outward with legend cards.",
+      "steps": ["core", "mid_tier", "outer_boundary", "legend_cards"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "items", "preset": 23, "subtype": 16, "filter": "fade", "trigger": "afterEffect", "duration": 350, "delay": 150, "stagger": 200},
+          {"group": "frame", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 300, "delay": 100, "stagger": 100}
+        ]
+      }
+    },
+    {
+      "id": "bento_grid_cascade",
+      "name": "Bento Grid Modular Cascade",
+      "category": "Pareto Choreography",
+      "description": "Hero tile fades in, top-right tile slides down and bottom-right tile slides up.",
+      "steps": ["hero_tile", "top_right_tile", "bottom_right_tile", "annotations"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "morph",
+        "effects": [
+          {"group": "frame", "preset": 10, "filter": "fade", "trigger": "withEffect", "duration": 350, "delay": 0},
+          {"group": "items", "preset": 2, "filter": "fade", "trigger": "withEffect", "duration": 350, "delay": 0, "stagger": 150, "alternating_subtypes": [1, 4, 2]}
+        ]
+      }
+    },
+    {
+      "id": "neo_brutalist_shadow_snap",
+      "name": "Neo-Brutalist Shadow Snap",
+      "category": "Pareto Choreography",
+      "description": "Foreground card appears instantly, then the hard offset shadow snaps diagonally into place.",
+      "steps": ["foreground_appear", "shadow_snap", "header_tag", "bullets"],
+      "default_intensity": "dynamic",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "frame", "preset": 1, "filter": "appear", "trigger": "withEffect", "duration": 0, "delay": 0},
+          {"group": "accent", "preset": 2, "subtype": 12, "filter": "fade", "trigger": "withEffect", "duration": 150, "delay": 120},
+          {"group": "header", "preset": 1, "filter": "appear", "trigger": "withEffect", "duration": 0, "delay": 0},
+          {"group": "items", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 250, "delay": 100, "stagger": 100}
+        ]
+      }
+    },
+    {
+      "id": "watermark_parallax_drift",
+      "name": "Watermark Parallax Drift",
+      "category": "Pareto Choreography",
+      "description": "Giant numeral drifts in slowly from the left while the foreground card enters from the right.",
+      "steps": ["watermark_drift", "foreground_card", "thesis", "proofs"],
+      "default_intensity": "subtle",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "background", "preset": 2, "subtype": 8, "filter": "fade", "trigger": "withEffect", "duration": 600, "delay": 0},
+          {"group": "frame", "preset": 2, "subtype": 2, "filter": "fade", "trigger": "withEffect", "duration": 350, "delay": 0},
+          {"group": "items", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 300, "delay": 100, "stagger": 80}
+        ]
+      }
+    },
+    {
+      "id": "timeline_node_step",
+      "name": "Timeline Node-by-Node Step",
+      "category": "Pareto Choreography",
+      "description": "Axis spine wipes full width, then each milestone node and callout advances on a click.",
+      "steps": ["axis_spine", "milestone_one", "milestone_two", "milestone_three", "milestone_four"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "frame", "preset": 22, "subtype": 8, "filter": "wipe(right)", "trigger": "withEffect", "duration": 450, "delay": 0},
+          {"group": "items", "preset": 23, "filter": "fade", "trigger": "clickEffect", "duration": 200, "delay": 0, "stagger": 0},
+          {"group": "accent", "preset": 10, "filter": "fade", "trigger": "clickEffect", "duration": 250, "delay": 0, "stagger": 0}
+        ]
+      }
+    },
+    {
+      "id": "swiss_editorial_rule_draw",
+      "name": "Swiss Editorial Rule Draw",
+      "category": "Pareto Choreography",
+      "description": "Top rule wipes right, vertical spine wipes down, then typography fades in cleanly.",
+      "steps": ["top_rule", "vertical_spine", "left_title", "right_prose"],
+      "default_intensity": "subtle",
+      "native": true,
+      "choreography": {
+        "transition": "fade",
+        "effects": [
+          {"group": "accent", "preset": 22, "subtype": 8, "filter": "wipe(right)", "trigger": "withEffect", "duration": 300, "delay": 0, "stagger": 100},
+          {"group": "frame", "preset": 22, "subtype": 4, "filter": "wipe(down)", "trigger": "afterEffect", "duration": 300, "delay": 0},
+          {"group": "items", "preset": 10, "filter": "fade", "trigger": "afterEffect", "duration": 400, "delay": 100, "stagger": 80}
+        ]
+      }
+    },
+    {
+      "id": "smooth_morph_crossfade",
+      "name": "Smooth Morph / Cross-Fade Transition",
+      "category": "Pareto Choreography",
+      "description": "Native PowerPoint morph with a fade fallback for older viewers.",
+      "steps": ["morph_choice", "fade_fallback"],
+      "default_intensity": "balanced",
+      "native": true,
+      "choreography": {
+        "transition": "morph",
+        "effects": [
+          {"group": "frame", "preset": 10, "filter": "fade", "trigger": "withEffect", "duration": 400, "delay": 0},
+          {"group": "items", "preset": 10, "filter": "fade", "trigger": "withEffect", "duration": 400, "delay": 100, "stagger": 60}
+        ]
+      }
+    }
+  ]
+}
