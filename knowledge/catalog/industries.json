@@ -1,0 +1,38 @@
+﻿{
+  "Architecture": {
+    "description": "Spatial design, structural acoustics, urban planning, materiality, and sustainable formwork.",
+    "accent_color": "#D97706",
+    "themes": [
+      {"name": "Brutalist Concrete", "accent": "#64748B", "style": "neo_brutalist_pop", "animation": "neo_brutalist_shadow_snap"},
+      {"name": "Biophilic & Timber", "accent": "#059669", "style": "swiss_grid_editorial", "animation": "swiss_editorial_rule_draw"},
+      {"name": "Minimalist Glass", "accent": "#0284C7", "style": "glassmorphism_card", "animation": "progressive_bullet_reveal"}
+    ]
+  },
+  "Construction": {
+    "description": "Heavy civil works, site logistics, safety compliance, structural steel, and BIM modeling.",
+    "accent_color": "#EA580C",
+    "themes": [
+      {"name": "Structural Steel & Safety", "accent": "#EA580C", "style": "executive_kpi_strip", "animation": "kpi_counter_stagger"},
+      {"name": "Smart Site Logistics", "accent": "#2563EB", "style": "chevron_process_flow", "animation": "left_to_right_pipeline_wipe"},
+      {"name": "Geotechnical Foundation", "accent": "#78350F", "style": "isometric_layer_stack", "animation": "isometric_layer_rise"}
+    ]
+  },
+  "Engineering": {
+    "description": "Mechanical systems, quantum computing, thermodynamics, robotics, and software architecture.",
+    "accent_color": "#2563EB",
+    "themes": [
+      {"name": "Quantum & Neon", "accent": "#38BDF8", "style": "cyberpunk_hud_frame", "animation": "hud_telemetry_lock_on"},
+      {"name": "Systems Thermodynamics", "accent": "#DC2626", "style": "radial_sunburst_hub", "animation": "radial_hub_expansion"},
+      {"name": "Precision Robotics", "accent": "#7C3AED", "style": "blueprint_cad_grid", "animation": "cad_blueprint_assembly"}
+    ]
+  },
+  "Literature": {
+    "description": "Narrative pacing, linguistic chunking, corpus linguistics, and editorial publishing strategy.",
+    "accent_color": "#9333EA",
+    "themes": [
+      {"name": "Classic Parchment", "accent": "#B45309", "style": "oversized_watermark", "animation": "watermark_parallax_drift"},
+      {"name": "Modern Typography", "accent": "#1E293B", "style": "frosted_sidebar_nav", "animation": "progressive_bullet_reveal"},
+      {"name": "Corpus Linguistics", "accent": "#0D9488", "style": "dual_comparison_matrix", "animation": "dual_matrix_opposing_slide"}
+    ]
+  }
+}

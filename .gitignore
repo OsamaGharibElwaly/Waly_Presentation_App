@@ -1,0 +1,12 @@
+﻿__pycache__/
+*.pyc
+.venv/
+venv/
+*.pptx
+*.pdf
+out/
+build/
+dist/
+.vscode/.ropeproject
+.DS_Store
+*.log

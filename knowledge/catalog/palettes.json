@@ -1,0 +1,12 @@
+﻿{
+  "palettes": [
+    {"name": "Cyber Slate & Neon Blue", "colors": ["#0F172A", "#1E293B", "#38BDF8", "#2563EB", "#F8FAFC"]},
+    {"name": "Warm Architectural Earth", "colors": ["#1C1917", "#292524", "#D97706", "#B45309", "#FAFAF9"]},
+    {"name": "Construction Safety & Steel", "colors": ["#09090B", "#18181B", "#EA580C", "#52525B", "#FAFAFA"]},
+    {"name": "Biophilic Forest & Timber", "colors": ["#064E3B", "#065F46", "#059669", "#34D399", "#ECFDF5"]},
+    {"name": "Quantum Deep Purple", "colors": ["#2E1065", "#3B0764", "#7C3AED", "#A78BFA", "#F5F3FF"]},
+    {"name": "Minimalist Scandinavian", "colors": ["#F8FAFC", "#E2E8F0", "#0284C7", "#0F172A", "#334155"]},
+    {"name": "Editorial Obsidian & Gold", "colors": ["#0A0A0A", "#171717", "#D4AF37", "#E5E5E5", "#FFFFFF"]},
+    {"name": "Thermal Gradient Red", "colors": ["#450A0A", "#7F1D1D", "#DC2626", "#F87171", "#FEF2F2"]}
+  ]
+}
