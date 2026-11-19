@@ -33,3 +33,6 @@ class AgentFactory:
             _REGISTRY["markdown_manipulator"] = MarkdownManipulatorAgent
         except Exception:
             pass
+
+
+register = AgentFactory.register

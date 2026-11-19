@@ -11,7 +11,10 @@ TAKEAWAY_RE = re.compile(r"!important|key (?:takeaway|insight)|\bhighlight\b", r
 CUE_RE = re.compile(r"\b(?:Emphasize|Highlight|Point out|Walk through)\b", re.I)
 BULLET_RE = re.compile(r"^(?:[-*]\s+|\d+[.)]\s+)")
 BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+CODE_RE = re.compile(r"`([^`]+)`")
 NUMBERED_RE = re.compile(r"^\s*\d+[.)]\s")
+VISUAL_RE = re.compile(r"^::visual\s+(.+)$", re.I)
+IMAGE_RE = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\)$")
 
 
 def classify_intent(title: str, bullets: list[str], notes: str, bold: list[int]) -> str:
@@ -50,6 +53,8 @@ class MarkdownManipulatorAgent(BaseAgent):
         current_bullets: list[str] = []
         current_bold: list[int] = []
         current_notes = ""
+        current_visual = ""
+        current_image = ""
 
         def commit() -> None:
             if not (current_bullets or current_title != "Overview"):
@@ -64,6 +69,8 @@ class MarkdownManipulatorAgent(BaseAgent):
                 layout_type=classify_intent(current_title, bullets, current_notes, bold),
                 focal_index=focal,
                 emphasis_cue=cue,
+                visual_hint=current_visual.strip(),
+                image_spec=current_image.strip(),
             ))
 
         for line in text.splitlines():
@@ -76,13 +83,21 @@ class MarkdownManipulatorAgent(BaseAgent):
                 current_bullets = []
                 current_bold = []
                 current_notes = ""
+                current_visual = ""
+                current_image = ""
+            elif VISUAL_RE.match(line_s):
+                current_visual = VISUAL_RE.match(line_s).group(1).strip()
+            elif IMAGE_RE.match(line_s):
+                current_image = IMAGE_RE.match(line_s).group(2).strip()
             elif line_s.startswith(">"):
                 current_notes += line_s.lstrip("> ").strip() + " "
+            elif NUMBERED_RE.match(line_s):
+                current_bullets.append(CODE_RE.sub(r"\1", line_s).strip())
             elif BULLET_RE.match(line_s):
                 bullet = BULLET_RE.sub("", line_s, count=1).strip()
                 if BOLD_RE.search(bullet):
                     current_bold.append(len(current_bullets))
-                current_bullets.append(BOLD_RE.sub(r"\1", bullet).strip(" |"))
+                current_bullets.append(CODE_RE.sub(r"\1", BOLD_RE.sub(r"\1", bullet)).strip(" |"))
             elif line_s.startswith("|") and not re.fullmatch(r"[|\-: ]+", line_s):
                 bullet = " ".join(part.strip() for part in line_s.strip("|").split("|") if part.strip())
                 if bullet:

@@ -9,11 +9,11 @@ from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QColor, QFont, QKeySequence, QPainter, QAction
 from PyQt6.QtWidgets import (
     QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QTabWidget, QToolBox,
+    QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QScrollArea, QTabWidget, QToolBox,
     QVBoxLayout, QWidget,
 )
 
-from backend.pipeline.orchestrator import Orchestrator
+from frontend.ui.export_worker import ExportWorker
 from backend.pptx_engine.style_prompt import compose_style_prompt
 from frontend.theme_factory.animation_registry import AnimationRegistry
 from frontend.theme_factory.catalog import INDUSTRIES
@@ -378,6 +378,17 @@ class MainWindow(QMainWindow):
         self.open_btn.setEnabled(False)
         self.open_btn.clicked.connect(self._open_output)
         actions.addWidget(self.open_btn)
+
+        self.cancel_btn = QPushButton("Cancel export")
+        self.cancel_btn.setEnabled(False)
+        self.cancel_btn.clicked.connect(self._cancel_export)
+        actions.addWidget(self.cancel_btn)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFixedWidth(180)
+        actions.addWidget(self.progress_bar)
         actions.addStretch(1)
         root.addLayout(actions)
 
@@ -729,28 +740,58 @@ class MainWindow(QMainWindow):
             "animation_intensity": intensity,
             "style_prompt": style_prompt,
         }
+        if getattr(self, "_worker", None) and self._worker.isRunning():
+            return
         out_dir = Path("out")
         out_dir.mkdir(exist_ok=True)
         target = out_dir / f"{meta['deck_title']}.{kind}"
 
-        try:
-            Orchestrator(theme=self._selected_theme, palette=palette, meta=meta).run(
-                self.md_editor.toPlainText(), target
-            )
-        except Exception as exc:
-            QMessageBox.critical(self, "Export failed", str(exc))
-            self.status_lbl.setText("Export failed - see the error dialog.")
-            return
+        self._worker = ExportWorker(self._selected_theme, palette, meta, self.md_editor.toPlainText(), target)
+        self._worker.progress.connect(self._on_export_progress)
+        self._worker.failed.connect(self._on_export_failed)
+        self._worker.succeeded.connect(
+            lambda path, _m=meta, _p=palette, _mode=mode: self._on_export_done(path, _m, _p, _mode)
+        )
+        self._worker.finished.connect(self._on_export_finished)
+        self.cancel_btn.setEnabled(True)
+        self.progress_bar.setValue(0)
+        self.status_lbl.setText(f"Exporting {kind.upper()} - starting...")
+        self._worker.start()
 
+    def _on_export_progress(self, value: int, message: str) -> None:
+        self.progress_bar.setValue(value)
+        self.status_lbl.setText(f"Exporting - {message} ({value}%)")
+
+    def _on_export_failed(self, message: str) -> None:
+        QMessageBox.critical(self, "Export failed", message)
+        self.status_lbl.setText("Export failed - see the error dialog.")
+
+    def _on_export_done(self, path: str, meta: dict, palette: dict, mode: str) -> None:
         self.open_btn.setEnabled(True)
-        self.status_lbl.setText(f"Exported {kind.upper()}: {target.resolve()}")
+        self.status_lbl.setText(f"Exported: {path}")
         QMessageBox.information(
             self, "Export successful",
-            f"Created {target.resolve()}\n\n"
+            f"Created {path}\n\n"
             f"Design: {self.design_combo.currentText()}\n"
             f"Palette: {palette.get('name', 'Default')}\n"
             f"Animation: {self.animation_combo.currentText()} ({mode})",
         )
+
+    def _on_export_finished(self) -> None:
+        self.cancel_btn.setEnabled(False)
+        worker = getattr(self, "_worker", None)
+        if worker and not worker.isInterruptionRequested():
+            self.progress_bar.setValue(100)
+        else:
+            self.progress_bar.setValue(0)
+            self.status_lbl.setText("Export cancelled.")
+
+    def _cancel_export(self) -> None:
+        worker = getattr(self, "_worker", None)
+        if worker:
+            worker.cancel()
+            self.cancel_btn.setEnabled(False)
+            self.status_lbl.setText("Cancelling export...")
 
     def _open_output(self) -> None:
         import os

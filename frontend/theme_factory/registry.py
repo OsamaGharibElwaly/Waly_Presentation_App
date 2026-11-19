@@ -1,8 +1,13 @@
 ﻿"""ThemeRegistry - loads palettes + industries from JSON catalogs using utf-8-sig."""
 import json
+from functools import lru_cache
 from pathlib import Path
 
 CATALOG_DIR = Path(__file__).resolve().parents[2] / "knowledge" / "catalog"
+
+@lru_cache(maxsize=None)
+def _load_catalog(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8-sig")) if path.exists() else {}
 
 class ThemeRegistry:
     def __init__(self, catalog_dir: Path | None = None) -> None:
@@ -12,9 +17,7 @@ class ThemeRegistry:
 
     def _load(self, name: str) -> dict:
         path = self.dir / name
-        if path.exists():
-            return json.loads(path.read_text(encoding="utf-8-sig"))
-        return {}
+        return _load_catalog(path)
 
     def palettes(self) -> list[dict]:
         return self._palettes.get("palettes", [])

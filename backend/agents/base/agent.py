@@ -8,6 +8,14 @@ class AgentContext:
     meta: dict = field(default_factory=dict)
 
 @dataclass
+class VisualSpec:
+    mode: str = "geometric_composition"
+    prompt: str = ""
+    placement: str = "split_right"
+    typography_scale: str = "headline"
+
+
+@dataclass
 class SlideSpec:
     title: str
     bullets: list[str]
@@ -15,6 +23,12 @@ class SlideSpec:
     layout_type: str = ""
     focal_index: int | None = None
     emphasis_cue: str = ""
+    visual_hint: str = ""
+    image_spec: str = ""
+    visual_spec: VisualSpec | None = None
+    pacing: str = ""
+    image_path: str = ""
+    image_placement: str = ""
 
 class BaseAgent:
     def __init__(self, ctx: AgentContext | None = None) -> None:

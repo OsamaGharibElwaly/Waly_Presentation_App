@@ -11,6 +11,7 @@ Animation modes:
 """
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 
@@ -28,6 +29,7 @@ from frontend.theme_factory.animation_registry import AnimationRegistry
 from frontend.theme_factory.design_registry import DesignRegistry
 
 W, H = 13.333, 7.5
+V4_PLACEMENTS = ("split_right", "split_left", "giant_stat_split", "hero_banner", "full_bleed_glass")
 DEFAULTS = ["#0F172A", "#1E293B", "#38BDF8", "#2563EB", "#F8FAFC"]
 BODY_FONT = "Aptos"
 MONO_FONT = "Consolas"
@@ -483,7 +485,11 @@ class PptxBuilder:
                 slide = prs.slides.add_slide(prs.slide_layouts[6])
                 self._groups = {}
                 self.background(slide)
-                self._render(slide, spec, bullets, stage)
+                visual = getattr(spec, "visual_spec", None)
+                if visual and visual.placement in V4_PLACEMENTS:
+                    self._render_v4(slide, spec, bullets, stage)
+                else:
+                    self._render(slide, spec, bullets, stage)
                 if spec.notes:
                     try:
                         slide.notes_slide.notes_text_frame.text = spec.notes
@@ -505,6 +511,76 @@ class PptxBuilder:
         renderer(slide, spec, list(bullets), stage)
         if stage:
             self.text(slide, stage.upper(), 9.25, 0.30, 3.6, 0.28, 9,
+                      self.accent, True, PP_ALIGN.RIGHT, MONO_FONT, "stamp")
+
+    @staticmethod
+    def _text_height(value: str, width: float, size: float) -> float:
+        per_line = max(8, int((width * 72) / (size * 0.52)))
+        lines = sum(max(1, math.ceil(len(part) / per_line)) for part in str(value).split("\n"))
+        return lines * size * 1.25 / 72 + 0.08
+
+    def _place_image(self, slide, path, x, y, width, height) -> None:
+        try:
+            if path and Path(path).exists():
+                slide.shapes.add_picture(str(path), Inches(x), Inches(y),
+                                         width=Inches(width), height=Inches(height))
+                return
+        except (OSError, ValueError):
+            pass
+        self.shape(slide, MSO_SHAPE.RECTANGLE, x, y, width, height, self.card_color, self.accent, 1.5)
+        for index in range(1, 5):
+            self.rule(slide, x + 0.3, y + height * index / 5, width - 0.6, 0.02, self.highlight)
+
+    def _v4_text(self, slide, spec, bullets, x, y, width, title_size, bullet_size, limit,
+                 focal_group: bool = True):
+        title = self.clip(spec.title, 120)
+        title_h = self._text_height(title, width, title_size)
+        self.text(slide, title, x, y, width, title_h, title_size, self.fg, True,
+                  group="focal" if focal_group else None)
+        top = y + title_h + 0.18
+        focal = getattr(spec, "focal_index", None)
+        for index, bullet in enumerate(list(bullets)[:limit]):
+            text = self.clip(bullet, 160)
+            height = self._text_height(text, width, bullet_size)
+            color = self.highlight if focal == index else self.fg
+            self.text(slide, text, x, top, width, height, bullet_size, color, focal == index)
+            top += height + 0.14
+        return top
+
+    def _render_v4(self, slide, spec, bullets, stage) -> None:
+        placement = spec.visual_spec.placement
+        path = getattr(spec, "image_path", "")
+        if placement == "hero_banner":
+            self._place_image(slide, path, 0, 0, W, 4.35)
+            self.shape(slide, MSO_SHAPE.RECTANGLE, 0, 4.35, W, 3.15, self.card_color)
+            self._v4_text(slide, spec, bullets, 0.7, 4.62, 11.9, 36, 17, 3)
+        elif placement == "full_bleed_glass":
+            self._place_image(slide, path, 0, 0, W, H)
+            self.shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, 0.85, 0.95, 7.9, 5.5,
+                       self.card_color, self.highlight, 1.5)
+            self._v4_text(slide, spec, bullets, 1.25, 1.35, 7.1, 44, 19, 4)
+        elif placement == "giant_stat_split":
+            self._place_image(slide, path, 7.33, 0, 6.0, H)
+            self.shape(slide, MSO_SHAPE.RECTANGLE, 0, 0, 7.33, H, self.card_color)
+            hero = self._metric(next(iter(bullets), "")) or self.clip(spec.title, 10)
+            hero_h = self._text_height(hero, 6.1, 76)
+            self.text(slide, hero, 0.6, 0.75, 6.1, hero_h, 76, self.highlight, True, group="focal")
+            subtitle = self.clip(spec.title, 80)
+            subtitle_h = self._text_height(subtitle, 6.0, 20)
+            self.text(slide, subtitle, 0.65, 0.75 + hero_h + 0.1,
+                      6.0, subtitle_h, 20, self.fg, True)
+            self._v4_text(slide, spec, bullets, 0.65, 0.85 + hero_h + subtitle_h + 0.3,
+                          6.0, 20, 17, 3, focal_group=False)
+        else:
+            right = placement == "split_right"
+            image_x = 6.667 if right else 0
+            text_x = 0.65 if right else 7.32
+            self._place_image(slide, path, image_x, 0, 6.666, H)
+            self.shape(slide, MSO_SHAPE.RECTANGLE, 0 if right else 6.667, 0, 6.667, H,
+                       self.card_color)
+            self._v4_text(slide, spec, bullets, text_x, 0.95, 5.4, 40, 18, 4)
+        if stage:
+            self.text(slide, stage.upper(), 9.25, 6.82, 3.6, 0.22, 9,
                       self.accent, True, PP_ALIGN.RIGHT, MONO_FONT, "stamp")
 
     def _is_focal(self, spec, index: int) -> bool:
