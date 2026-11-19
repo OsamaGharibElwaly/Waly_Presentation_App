@@ -8,6 +8,12 @@ class AgentContext:
     meta: dict = field(default_factory=dict)
 
 @dataclass
+class TextBlock:
+    kind: str
+    text: str
+
+
+@dataclass
 class VisualSpec:
     mode: str = "geometric_composition"
     prompt: str = ""
@@ -29,6 +35,7 @@ class SlideSpec:
     pacing: str = ""
     image_path: str = ""
     image_placement: str = ""
+    blocks: list[TextBlock] = field(default_factory=list)
 
 class BaseAgent:
     def __init__(self, ctx: AgentContext | None = None) -> None:

@@ -1,76 +1,66 @@
-# SKILLS.md — Phase 4 Senior Visual Studio & Synthetic Art Engine
+# SKILLS.md — Phase 5 Zero-Overlap Typography, `/images-factory` Pool & Right Inspector Studio
 
-## 1. Objective & Architectural Upgrade
-Upgrade `OfflineAIPresentationFactory` Phase 4 from small icon-level graphics to **senior-designer, agency-grade visual compositions** across **any Markdown input** (both explicit `::visual` directives and plain headings/bullets/tables/steps).
-
-- **Zero Cloud / Zero Cost:** 100% offline execution using `Pillow` (`PIL`), `NumPy`, `NetworkX`, `python-pptx`, and `reportlab`.
-- **Every Slide Gets Visual Craft:** Even plain Markdown without `::visual` tags automatically triggers `PlannerAgent` + `Image_Factory_Agent` so no deck falls back to plain bullet walls.
-- **Full-Scale Eye-Candy Layouts (Not Small Icons):** Render high-resolution (`2x` supersampled `LANCZOS`) editorial artwork sized for **50/50 half-slide split panels, full-bleed hero backdrops, and giant-typography spotlight spreads**.
-
----
-
-## 2. Verified Module Map & Contracts
-- `backend/agents/base/agent.py` — Typed `SlideSpec`, `VisualSpec`, `AgentContext`, and fixed `@register` agent factory alias resolution.
-- `backend/agents/markdown_manipulator.py` — Parses `#`, `##`, `-`/`*`, `>`, `::visual`, `![alt](spec)`, pipe tables, numbered steps, and inline `**bold**` / `` `code` ``.
-- `backend/agents/planner_agent.py` — Assigns senior presentation direction: layout archetype, `visual_placement`, `typography_scale`, `focal_index`, `emphasis_cue`, and `VisualSpec` with anti-repetition pacing.
-- `backend/agents/image_factory_agent.py` — Synthesizes high-DPI (`2x` `LANCZOS`) eye-candy PNGs cached by `(content_hash, theme_hash, placement, aspect_ratio)` under `out/.cache/images/`.
-- `backend/pipeline/orchestrator.py` — Enforces stage order: `Parse -> Optimize -> Plan -> Synthesize -> Build`.
-- `backend/builders/pptx_builder.py` & `pdf_builder.py` — Renders giant display typography paired with half-slide, full-bleed, and split visual placements.
-- `frontend/ui/export_worker.py` & `main_window.py` — Non-blocking `QThread` export worker with progress, cancellation, error signals, and in-memory catalog caching.
+## 1. Phase 5 Objectives
+Upgrade `OfflineAIPresentationFactory` for **Phase 5** with three concrete improvements:
+1. **Zero Text Collisions (`Conflict-Free Layout & Typography Guard`):** Eliminate overlapping titles, headings, bullets, tables, notes, and image zones across both `PptxBuilder` and `PdfBuilder`.
+2. **Pre-Built Append-Only `/images-factory` Pool (No Runtime Image Generation Overhead):** Decouple image creation from deck export runtime. Generate/curate images via a dedicated `/images-factory` workflow that **appends** new assets to the pool on each run, while export/build time only selects and embeds matching pre-built assets (with safe local fallback if the pool is empty).
+3. **Right Inspector Panel & Guided Settings in Frontend (`frontend/`):** Add a right-hand dock/panel in `MainWindow` featuring a **live layout/text-box & animation sequence preview** (plus an optional pop-out preview window) and a **guided settings walkthrough** before running export.
 
 ---
 
-## 3. Senior Presentation Layouts & Placement Contracts (`VisualSpec`)
-`PlannerAgent` and `Image_Factory_Agent` must coordinate **layout geometry** and **image aspect ratio** so images fill their designated canvas cleanly without distortion or tiny icon framing:
+## 2. Zero Text-Overlap & Typography Invariants
+Text conflicts happen when fixed coordinates meet variable text length, tables, numbered steps, or split-panel images. Enforce these deterministic rules before placing any text element:
 
-| Placement ID | Slide Composition (16:9 `13.333" × 7.5"`) | Target Image Aspect (`2x` Render) | Typography & Eye-Candy Treatment |
-| :--- | :--- | :--- | :--- |
-| `split_right` | **50/50 Split:** Left 50% giant display title (`36–48pt`) + concise bullets; Right 50% edge-to-edge synthetic artwork (`6.67" × 7.5"`) | `1600 × 1800` (`8:9`) | Full-height right canvas with layered glass cards, gradient mesh, and focal art |
-| `split_left` | **50/50 Split (Inverted):** Left 50% edge-to-edge artwork (`6.67" × 7.5"`); Right 50% oversized headline + key takeaways | `1600 × 1800` (`8:9`) | Alternates visual weight across consecutive slides for magazine-style pacing |
-| `giant_stat_split` | **Giant Typography Hero:** Left 55% monumental callout number/phrase (`64–96pt`) + subtitle; Right 45% high-contrast visual | `1440 × 1800` (`4:5`) | Hero metric or bold thesis statement paired with custom spark/glow geometry |
-| `hero_banner` | **Top/Bottom Split:** Top 58% panoramic synthetic banner (`13.333" × 4.35"`); Bottom 42% clean horizontal summary strip | `2560 × 840` (`3:1`) | Ideal for section openers, roadmaps, and `node_flow_diagram` pipelines |
-| `full_bleed_glass` | **Full-Bleed Backdrop + Frosted Panel:** Full-slide `16:9` atmospheric art (`13.333" × 7.5"`) behind a translucent high-contrast content card | `2560 × 1440` (`16:9`) | Used for title/closing slides and spotlight theses with vignette & film grain |
-
-### Anti-Icon & Pacing Rules
-1. **Minimum Visual Footprint:** Never render standalone decorative graphics smaller than `40%` of slide area unless inside a multi-card bento grid.
-2. **Automatic Synthesis for Plain Markdown:** When a slide has no explicit `::visual` tag, `PlannerAgent` infers the best visual mode and placement from slide structure:
-   - Title / Opening / Closing slide $\rightarrow$ `full_bleed_glass` + `split_illustration`
-   - Numbered steps (`1. 2. 3.`) or architecture keywords $\rightarrow$ `hero_banner` or `split_right` + `node_flow_diagram`
-   - Numbers, percentages, or KPIs (`$`, `%`, `x`, benchmarks) $\rightarrow$ `giant_stat_split` + `metric_visual`
-   - Pipe tables or comparisons $\rightarrow$ `split_left` + `geometric_composition`
-   - Standard bullet slides $\rightarrow$ Alternate `split_right` and `split_left` with `split_illustration` / `geometric_composition`
-3. **Zero Consecutive Repeats:** Adjacent slides must never share the same `(placement, visual_mode)` pair.
+- **Non-Overlapping Zone Allocation (`16:9` `13.333" × 7.5"`):**
+  - Partition every slide into **disjoint bounding boxes** (`[x, y, w, h]`)—never let a text box overlap an image zone or footer/header band.
+  - Reserve explicit margins (`≥ 0.55"` outer margin, `≥ 0.30"` gutter between columns/panels, `≥ 0.25"` vertical gap between title block, body block, and footer).
+- **Dynamic Font Scaling & Line Budgeting:**
+  - Compute max character/line capacity per bounding box from box width, font size, and line height.
+  - Step down font size deterministically (within a safe floor, e.g., `13pt` body / `28pt` title) or clamp/paginate overflowing bullets/rows *before* rendering so text never clips or collides with adjacent elements.
+- **Structured Block Isolation (Tables, Steps, Callouts):**
+  - Render pipe tables (`| ... |`) and numbered steps (`1. ...`) inside dedicated non-overlapping containers with explicit cell/row padding and capped column/row counts per slide.
+  - Keep speaker notes (`>`) strictly in notes/metadata—never overlaid onto slide canvas text.
+- **Automated Overlap Assertion:**
+  - Include a geometry overlap helper (`rects_intersect(a, b)`) in tests and builder validation so intersecting text/image boxes fail tests deterministically.
 
 ---
 
-## 4. `Image_Factory_Agent` Senior Artist Rendering Standards (`PIL` + `NumPy` + `NetworkX`)
-Every generated PNG must look like an intentional editorial illustration rather than flat primitive shapes:
+## 3. Append-Only `/images-factory` Workflow (Zero Runtime Generation Overhead)
+Move synthetic image creation out of the export hot path into a dedicated `/images-factory` command/workflow:
 
-1. **Multi-Layer Depth Stack (Bottom to Top):**
-   - **Layer 1 — Atmospheric Base:** Smooth diagonal/radial `NumPy` color field blending palette `bg` and `surface`, plus subtle organic grain/noise (`σ = 3–6`) to eliminate flat digital banding.
-   - **Layer 2 — Architectural Framing:** Subtle perspective grid lines, concentric arcs, or golden-ratio framing guides at low alpha (`12–28`).
-   - **Layer 3 — Hero Focal Composition:** Mode-specific centerpiece (`geometric_composition`, `node_flow_diagram`, `metric_visual`, or `split_illustration`) rendered with soft drop shadows, glowing accent halos (`GaussianBlur`), and multi-stop highlights using palette `accent` and `highlight`.
-   - **Layer 4 — Glassmorphic Overlay Accents:** Frosted translucent pills/cards (`RGBA` blur + `1px` crisp rim highlight) displaying structured node labels, metric bars, or visual badges derived from slide keywords.
-2. **Typography & Contrast Safety:**
-   - Ensure text-bearing slides (`full_bleed_glass`, `split_right`, `split_left`, `giant_stat_split`) maintain high contrast against the active palette's `text` slot.
-   - Supersample at `2x` target dimensions and downsample via `Image.Resampling.LANCZOS`.
-3. **Cache Key Integrity:**
-   - Include `renderer_version` (e.g., `v4_senior_artist`) in the `out/.cache/images/` hash key so upgrading the visual renderer automatically invalidates old small-icon PNGs without manual cache clearing.
-
----
-
-## 5. Builder Integration (`PptxBuilder` & `PdfBuilder`)
-- **Edge-to-Edge Placement:** Place `split_right` (`x=6.667", y=0", w=6.667", h=7.5"`) and `split_left` (`x=0", y=0", w=6.667", h=7.5"`) flush to slide edges, with generous inner padding (`0.65"`) on the typography half.
-- **Giant Typography Hierarchy:**
-  - `giant_stat_split`: Render extracted hero number/headline at `64–88pt` bold with a tight `16–20pt` supporting caption underneath.
-  - `split_right` / `split_left`: Render slide title at `34–44pt` bold, max 3–4 crisp bullets (`16–20pt`) with highlighted lead-in phrases (`**bold**`).
-- **Deterministic Fallback:** If an image file fails to load or generate, fall back gracefully to styled vector shapes without aborting export.
+- **Directory & Manifest Layout:**
+  - Maintain a persistent `/images-factory` asset pool (e.g., `images-factory/` or `/images-factory` at project root, plus an `images-factory/manifest.json` index) containing pre-rendered high-DPI images tagged by `id`, `mode`, `aspect_ratio`, `palette_tag`/`mood`, `dimensions`, and `created_at`.
+- **Append-Only Generation Behavior:**
+  - Each run of `/images-factory` **appends** newly generated images to the pool and updates `manifest.json` without deleting or overwriting existing pool assets (unless explicitly requested).
+  - Support a count/batch parameter (e.g., generate `N` new images per run) so each `/images-factory` run grows the library incrementally.
+- **Runtime Export Behavior (`Orchestrator` + `Image_Factory_Agent` + Builders):**
+  - During normal deck generation and PPTX/PDF export, **do not synthesize heavy new images on the fly**.
+  - `Image_Factory_Agent` queries the pre-built `/images-factory` pool (matching placement orientation/aspect ratio and avoiding duplicate picks within the same deck) and embeds those ready files.
+  - If `/images-factory` has no matching or available images yet, fall back cleanly to a lightweight, deterministic placeholder/shape without blocking or timing out export.
 
 ---
 
-## 6. Verification Checklist
-- [ ] Plain Markdown (without any `::visual` directives) produces full-bleed / 50-50 split eye-candy slides on every slide.
-- [ ] `out/.cache/images/` generates high-DPI (`1600×1800`, `2560×1440`, `2560×840`) PNGs and invalidates legacy icon caches via `renderer_version`.
-- [ ] `PptxBuilder` and `PdfBuilder` align half-slide images flush to edges with giant, legible, non-overlapping typography.
-- [ ] All `@register` agents resolve via the agent factory regression test, and `pytest` passes cleanly.
-- [ ] `.venv\Scripts\python.exe frontend\main.py` exports asynchronously via `ExportWorker` with responsive progress and cancellation.
+## 4. Frontend Right Panel: Animation/Layout Preview & Guided Settings
+Enhance `frontend/main_window.py` and `frontend/ui/` while preserving strict boundary isolation (`frontend/` talks to backend contracts/workers, never embedding heavy builder logic in UI event handlers):
+
+- **Right Inspector Panel (`RightInspectorPanel`):**
+  - Docked on the right side of `MainWindow` with two clear tabs:
+    1. **`Preview & Animation` Tab:**
+       - **Slide & Zone Wireframe Preview:** Shows the active slide's layout zones, text/table/step blocks, and selected `/images-factory` visual slot with visual overlap warnings if text is dense.
+       - **Animation & Transition Preview:** Lets the user pick a slide/transition/animation preset, preview a smooth UI motion/stagger simulation (`QTimer` / `QPropertyAnimation`) with Play/Replay/Step controls, and see the exact PowerPoint transition & animation settings that will be exported.
+       - **Pop-Out Preview Button:** Opens a larger resizable preview dialog (`QDialog`) for inspecting slides and motion before exporting.
+    2. **`Guided Settings` Tab:**
+       - Step-by-step guided workflow for first-time or fast users:
+         - **Step 1 — Deck & Text Safety:** Markdown source, layout/pacing mode, and text-fit/anti-overlap status.
+         - **Step 2 — Visual Pool & Motion:** Selected `/images-factory` assets, palette/theme, and slide transition/animation preset (plus a hint/action if `/images-factory` needs more appended images).
+         - **Step 3 — Export Target:** Output format (`.pptx`, `.pdf`), target path, and one-click export via `ExportWorker` (`QThread`).
+- **In-Memory Caching & Non-Blocking Execution:**
+  - Keep theme/palette/layout catalogs and `/images-factory` manifest reads cached in memory with refresh triggers, and keep all export operations on `ExportWorker` (`QThread`) with progress, cancel, and error handling.
+
+---
+
+## 5. Verification Checklist
+- [ ] **No Text Collisions:** Unit/integration tests verify zero bounding-box overlaps across titles, bullets, tables, steps, and image frames on `16:9` PPTX and PDF outputs.
+- [ ] **Append-Only `/images-factory`:** Running `/images-factory` multiple times appends new assets and updates the manifest without erasing prior pool images, and normal export does not run heavy image generation at runtime.
+- [ ] **Right Inspector & Guided UI:** Launching `.venv\Scripts\python.exe frontend\main.py` shows the right-hand preview/animation & guided settings panel, pop-out preview window, and non-blocking `ExportWorker` export flow.
+- [ ] **Test Suite:** `pytest` passes cleanly with zero regressions on `@register` agent resolution and pipeline stages.

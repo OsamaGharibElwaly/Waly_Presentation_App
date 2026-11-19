@@ -1,0 +1,58 @@
+[
+  {
+    "id": "asset_0001",
+    "mode": "geometric_composition",
+    "placement": "split_right",
+    "aspect_ratio": "1600:1800",
+    "palette_tag": "default",
+    "dimensions": [
+      1600,
+      1800
+    ],
+    "path": "images-factory\\asset_0001_geometric_composition.png",
+    "created_at": "2026-11-19T09:36:17.388776+00:00",
+    "renderer_version": "v4_senior_artist"
+  },
+  {
+    "id": "asset_0002",
+    "mode": "node_flow_diagram",
+    "placement": "split_left",
+    "aspect_ratio": "1600:1800",
+    "palette_tag": "default",
+    "dimensions": [
+      1600,
+      1800
+    ],
+    "path": "images-factory\\asset_0002_node_flow_diagram.png",
+    "created_at": "2026-11-19T09:36:18.248021+00:00",
+    "renderer_version": "v4_senior_artist"
+  },
+  {
+    "id": "asset_0003",
+    "mode": "metric_visual",
+    "placement": "giant_stat_split",
+    "aspect_ratio": "1440:1800",
+    "palette_tag": "default",
+    "dimensions": [
+      1440,
+      1800
+    ],
+    "path": "images-factory\\asset_0003_metric_visual.png",
+    "created_at": "2026-11-19T09:36:18.998311+00:00",
+    "renderer_version": "v4_senior_artist"
+  },
+  {
+    "id": "asset_0004",
+    "mode": "split_illustration",
+    "placement": "hero_banner",
+    "aspect_ratio": "2560:840",
+    "palette_tag": "default",
+    "dimensions": [
+      2560,
+      840
+    ],
+    "path": "images-factory\\asset_0004_split_illustration.png",
+    "created_at": "2026-11-19T09:36:19.433772+00:00",
+    "renderer_version": "v4_senior_artist"
+  }
+]

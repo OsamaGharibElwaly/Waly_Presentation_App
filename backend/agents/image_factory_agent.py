@@ -1,16 +1,22 @@
 """Offline senior-artist visual synthesizer with deterministic cached output."""
+import argparse
 import hashlib
+import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 import networkx as nx
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from backend.agents.base.agent import BaseAgent
+from backend.agents.base.agent import AgentContext, BaseAgent
 from backend.agents.factory.agent_factory import register
 
+POOL_DIR = Path("images-factory")
+MANIFEST_PATH = POOL_DIR / "manifest.json"
 RENDERER_VERSION = "v4_senior_artist"
+_manifest_cache: list[dict] | None = None
 SCALE = 2
 SIZES = {
     "split_right": (1600, 1800),
@@ -44,22 +50,38 @@ def numbers(text: str) -> list[float]:
     return values[:6] or [1.0, 2.0, 3.0]
 
 
+def load_manifest(refresh: bool = False) -> list[dict]:
+    global _manifest_cache
+    if _manifest_cache is None or refresh:
+        try:
+            data = json.loads(MANIFEST_PATH.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            data = []
+        _manifest_cache = data if isinstance(data, list) else []
+    return list(_manifest_cache)
+
+
 @register("image_factory")
 class ImageFactoryAgent(BaseAgent):
     def run(self, slides):
-        palette = palette_colors(self.ctx)
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        manifest = load_manifest()
+        used: set[str] = set()
         for slide in slides:
             spec = slide.visual_spec
             if spec is None:
                 continue
-            key = "|".join((RENDERER_VERSION, spec.mode, spec.placement, spec.prompt,
-                            slide.image_spec, ",".join(palette)))
-            digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
-            path = CACHE_DIR / f"{digest}.png"
-            if not path.exists():
-                self._synthesize(spec.mode, spec.placement, spec.prompt, palette).save(path)
-            slide.image_path = str(path)
+            candidates = [entry for entry in manifest
+                          if entry.get("placement") == spec.placement and entry.get("path") not in used]
+            if not candidates:
+                candidates = [entry for entry in manifest if entry.get("path") not in used]
+            if candidates:
+                index = int(hashlib.sha256(spec.prompt.encode("utf-8")).hexdigest()[:8], 16) % len(candidates)
+                entry = candidates[index]
+                path = Path(entry["path"])
+                slide.image_path = str(path) if path.exists() else ""
+                used.add(entry["path"])
+            else:
+                slide.image_path = ""
             slide.image_placement = spec.placement
         return slides
 
@@ -210,3 +232,45 @@ class ImageFactoryAgent(BaseAgent):
             box = self._box(0.14, y, 0.28, 0.09, width, height)
             draw.rounded_rectangle(box, radius=12 * SCALE, fill=(*channels(palette[4]), 55),
                                    outline=(*channels(palette[4]), 170), width=2 * SCALE)
+
+
+def build_pool(count: int = 4, palette: dict | None = None) -> list[dict]:
+    global _manifest_cache
+    POOL_DIR.mkdir(parents=True, exist_ok=True)
+    manifest = load_manifest(refresh=True)
+    ctx = AgentContext(palette=palette or {"colors": list(DEFAULTS)})
+    agent = ImageFactoryAgent(ctx)
+    colors = palette_colors(ctx)
+    placements = tuple(SIZES)
+    modes = ("geometric_composition", "node_flow_diagram", "metric_visual", "split_illustration")
+    created: list[dict] = []
+    for index in range(max(0, count)):
+        identifier = f"asset_{len(manifest) + len(created) + 1:04d}"
+        mode = modes[index % len(modes)]
+        placement = placements[index % len(placements)]
+        path = POOL_DIR / f"{identifier}_{mode}.png"
+        if path.exists():
+            continue
+        agent._synthesize(mode, placement, f"{identifier} editorial {mode}", colors).save(path)
+        created.append({
+            "id": identifier,
+            "mode": mode,
+            "placement": placement,
+            "aspect_ratio": f"{SIZES[placement][0]}:{SIZES[placement][1]}",
+            "palette_tag": str((palette or {}).get("name", "default")),
+            "dimensions": list(SIZES[placement]),
+            "path": str(path),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "renderer_version": RENDERER_VERSION,
+        })
+    if created:
+        manifest.extend(created)
+        MANIFEST_PATH.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        _manifest_cache = manifest
+    return created
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Append assets to the offline images-factory pool.")
+    parser.add_argument("--count", type=int, default=4)
+    print(json.dumps(build_pool(parser.parse_args().count), indent=2))

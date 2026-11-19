@@ -7,7 +7,7 @@ from lxml import etree
 from pptx import Presentation
 from pptx.util import Inches
 
-from backend.agents.base.agent import AgentContext, SlideSpec, VisualSpec
+from backend.agents.base.agent import AgentContext, SlideSpec, TextBlock, VisualSpec
 from backend.agents.image_factory_agent import ImageFactoryAgent
 from backend.agents.markdown_manipulator import MarkdownManipulatorAgent, classify_intent
 from backend.agents.planner_agent import PlannerAgent
@@ -282,52 +282,50 @@ def test_planner_assigns_contracts_without_repeats():
     assert all(isinstance(item.visual_spec, VisualSpec) and item.focal_index == 0 for item in planned)
 
 
-def test_image_factory_is_deterministic_and_cached(tmp_path, monkeypatch):
-    from PIL import Image
+def _isolated_pool(tmp_path, monkeypatch):
     from backend.agents import image_factory_agent as factory
 
-    monkeypatch.setattr(factory, "CACHE_DIR", tmp_path / "images")
-    assert factory.SCALE == 2
-    prompt = "42% cost, 68% revenue, 71% uptime"
-
-    def make_spec():
-        return SlideSpec(title="Metrics", bullets=[], visual_spec=VisualSpec(
-            mode="metric_visual", prompt=prompt, placement="giant_stat_split"))
-
-    first = make_spec()
-    ImageFactoryAgent(AgentContext(palette=PALETTE)).run([first])
-    path = Path(first.image_path)
-    assert path.exists()
-    with Image.open(path) as image:
-        assert image.size == factory.SIZES["giant_stat_split"]
-        pixels = image.tobytes()
-    raw = path.read_bytes()
-
-    second = make_spec()
-    ImageFactoryAgent(AgentContext(palette=PALETTE)).run([second])
-    assert second.image_path == first.image_path
-    assert Path(second.image_path).read_bytes() == raw
-    with Image.open(second.image_path) as image:
-        assert image.tobytes() == pixels
-
-    monkeypatch.setattr(factory, "RENDERER_VERSION", "v4_senior_artist_next")
-    upgraded = make_spec()
-    ImageFactoryAgent(AgentContext(palette=PALETTE)).run([upgraded])
-    assert upgraded.image_path != first.image_path
-    with Image.open(upgraded.image_path) as image:
-        assert image.size == factory.SIZES["giant_stat_split"]
+    pool_dir = tmp_path / "images-factory"
+    monkeypatch.setattr(factory, "POOL_DIR", pool_dir)
+    monkeypatch.setattr(factory, "MANIFEST_PATH", pool_dir / "manifest.json")
+    monkeypatch.setattr(factory, "_manifest_cache", None)
+    return factory
 
 
-def test_image_factory_supports_all_four_modes(tmp_path, monkeypatch):
-    from backend.agents import image_factory_agent as factory
+def test_images_factory_pool_appends_and_runtime_only_selects(tmp_path, monkeypatch):
+    factory = _isolated_pool(tmp_path, monkeypatch)
+    first = factory.build_pool(3)
+    assert len(first) == 3
+    assert all(Path(entry["path"]).exists() for entry in first)
+    previous = {entry["id"] for entry in first}
 
-    monkeypatch.setattr(factory, "CACHE_DIR", tmp_path)
-    modes = ("geometric_composition", "node_flow_diagram", "metric_visual", "split_illustration")
-    specs = [SlideSpec(title=mode, bullets=[], visual_spec=VisualSpec(mode=mode, prompt="42% growth"))
-             for mode in modes]
+    second = factory.build_pool(2)
+    manifest = factory.load_manifest(refresh=True)
+    assert previous <= {entry["id"] for entry in manifest}
+    assert len(manifest) == 5
+    assert len({entry["path"] for entry in manifest}) == 5
+
+    agent = ImageFactoryAgent(AgentContext(palette=PALETTE))
+    calls: list[object] = []
+
+    def forbidden(*args, **kwargs):
+        calls.append(args)
+
+    monkeypatch.setattr(agent, "_synthesize", forbidden)
+    specs = [SlideSpec(title=f"Slide {index}", bullets=[], visual_spec=VisualSpec(
+        placement="split_right", prompt=str(index))) for index in range(3)]
+    agent.run(specs)
+    assert calls == []
+    assert len({spec.image_path for spec in specs}) == 3
+    assert all(spec.image_path for spec in specs)
+
+
+def test_runtime_falls_back_cleanly_without_pool(tmp_path, monkeypatch):
+    factory = _isolated_pool(tmp_path, monkeypatch)
+    specs = [SlideSpec(title="Empty", bullets=[], visual_spec=VisualSpec(placement="split_right"))]
     ImageFactoryAgent(AgentContext(palette=PALETTE)).run(specs)
-    assert len({spec.image_path for spec in specs}) == len(modes)
-    assert all(Path(spec.image_path).exists() for spec in specs)
+    assert specs[0].image_path == ""
+    assert specs[0].image_placement == "split_right"
 
 
 def test_plain_markdown_gets_v4_visuals_without_repeats():
@@ -371,7 +369,9 @@ def test_builder_places_v4_images_flush_to_edges(tmp_path):
         assert all(abs(first - second) < 0.02 for first, second in zip(actual, box))
 
 
-def test_builders_render_generated_images(tmp_path):
+def test_builders_render_generated_images(tmp_path, monkeypatch):
+    factory = _isolated_pool(tmp_path, monkeypatch)
+    factory.build_pool(4)
     meta = {
         "deck_title": "Visual Deck", "design_id": "executive_kpi_strip",
         "animation_id": "progressive_bullet_reveal", "animation_mode": "native",
@@ -440,3 +440,84 @@ def test_catalogs_are_cached_in_memory():
     assert DesignRegistry().data is DesignRegistry().data
     assert AnimationRegistry().data is AnimationRegistry().data
     assert ThemeRegistry().palettes() is ThemeRegistry().palettes()
+
+
+def test_v4_zones_are_disjoint_and_blocks_are_isolated(tmp_path):
+    from backend.layout.geometry import layout_zones, rects_intersect
+
+    for placement in ("split_right", "split_left", "giant_stat_split", "hero_banner", "full_bleed_glass"):
+        zones = layout_zones(placement)
+        assert not rects_intersect(zones["content"], zones["footer"], 0.2)
+
+    spec = SlideSpec(
+        title="Quarterly evidence review with a longer headline",
+        bullets=["68% reduction in API spend", "42% faster delivery", "96% parity with baseline"],
+        focal_index=1,
+        visual_spec=VisualSpec(placement="split_right"),
+        blocks=[TextBlock("table", "Metric | Value | Trend"),
+                TextBlock("steps", "1. Classify data 2. Deploy pilot"),
+                TextBlock("notes", "Speaker-only note never drawn on canvas")],
+    )
+    ctx = AgentContext(theme={"industry": "Business", "name": "Test", "style": "glassmorphism_card"},
+                       palette=PALETTE, meta={"deck_title": "Safe", "animation_mode": "off"})
+    builder = PptxBuilder(ctx)
+    builder.build([spec], tmp_path / "safe.pptx")
+    text_zones = builder._zones.get("text", [])
+    block_zones = builder._zones.get("block", [])
+    image_zones = builder._zones.get("image", [])
+    footer = layout_zones("split_right")["footer"]
+    assert text_zones and len(block_zones) == 2
+    assert all(not rects_intersect(text, block) for text in text_zones for block in block_zones)
+    assert all(not rects_intersect(text, footer, 0.05) for text in text_zones)
+    assert all(not rects_intersect(text, image) for text in text_zones for image in image_zones)
+    assert_no_text_overflow(Presentation(tmp_path / "safe.pptx").slides[1])
+
+
+def test_blocks_are_parsed_into_typed_containers():
+    markdown = """## Delivery plan
+| Phase | Owner |
+| --- | --- |
+| Discovery | Data team |
+1. Approve classification
+- **Gate** security review
+> Speaker note: walk through the gate
+"""
+    spec = MarkdownManipulatorAgent(AgentContext()).run(markdown)[0]
+    kinds = [block.kind for block in spec.blocks]
+    assert "table" in kinds and "steps" in kinds and "bullets" in kinds and "notes" in kinds
+    assert all(block.text for block in spec.blocks)
+
+
+def test_right_inspector_panel_and_main_window_dock(monkeypatch):
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    qt = pytest.importorskip("PyQt6.QtWidgets")
+    from PyQt6.QtCore import QObject
+    from frontend.ui.main_window import MainWindow
+    from frontend.ui.right_inspector import RightInspectorPanel, ZonePreview
+
+    app = qt.QApplication.instance() or qt.QApplication([])
+    panel = RightInspectorPanel(manifest=[{"id": "asset_0001"}])
+    assert panel.tabs.count() == 2
+    assert "1 pre-built" in panel.pool_lbl.text()
+    requested: list[str] = []
+    panel.exportRequested.connect(requested.append)
+    panel.format_combo.setCurrentIndex(1)
+    panel.guided_export.click()
+    assert requested == ["pdf"]
+    panel.set_progress(40, "Rendering")
+    assert panel.guided_progress.value() == 40
+    preview = panel.preview
+    preview.set_placement("split_right", "dense text - font clamped")
+    preview.step()
+    assert preview.get_progress() > 0
+    assert isinstance(preview, ZonePreview)
+
+    window = MainWindow()
+    docks = [dock for dock in window.findChildren(qt.QDockWidget)
+             if dock.objectName() == "RightInspectorDock"]
+    assert len(docks) == 1
+    assert isinstance(docks[0].widget(), QObject)
+    window._on_export_progress(55, "Synthesizing")
+    assert window.inspector.guided_progress.value() == 55
+    window.close()
+    app.processEvents()

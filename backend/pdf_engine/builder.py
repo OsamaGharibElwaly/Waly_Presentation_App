@@ -1,6 +1,5 @@
 ﻿"""ReportLab PDF export engine."""
 import re
-import textwrap
 from pathlib import Path
 
 from reportlab.lib.colors import HexColor
@@ -9,6 +8,7 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen.canvas import Canvas
 
 from backend.agents.base.agent import AgentContext
+from backend.layout.geometry import fit_size, layout_zones
 
 V4_PLACEMENTS = ("split_right", "split_left", "giant_stat_split", "hero_banner", "full_bleed_glass")
 DEFAULTS = ("#0F172A", "#1E293B", "#38BDF8", "#2563EB", "#F8FAFC")
@@ -71,54 +71,71 @@ class PdfBuilder:
         c.setStrokeColor(HexColor(accent))
         c.rect(x, y_bottom, width, height, fill=1, stroke=1)
 
-    def _write(self, c, value, x, y, width, size, color, bold=False, leading=1.25):
+    def _write(self, c, value, x, y_top, width, height, size, color, bold=False, minimum=13):
+        fitted, lines = fit_size(str(value), width / inch, height / inch, size, minimum)
         c.setFillColor(HexColor(color))
-        c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
-        lines = textwrap.wrap(str(value), width=max(8, int(width / (size * 0.52)))) or [""]
+        c.setFont("Helvetica-Bold" if bold else "Helvetica", fitted)
+        cursor = y_top
         for line in lines:
-            c.drawString(x, y, line[:120])
-            y -= size * leading
-        return y - 6
+            c.drawString(x, cursor, line[:120])
+            cursor -= fitted * 1.25
+        return cursor
 
     def _legacy_page(self, c, spec, w, h, card, accent, highlight, fg) -> None:
         self._image(c, getattr(spec, "image_path", ""), w - 2.2 * inch,
                     h - 1.2 * inch, 1.8 * inch, 1.01 * inch, card, accent)
-        self._write(c, spec.title, 0.75 * inch, h - 1.2 * inch, 9.5 * inch, 26, fg, True)
-        y = h - 2.0 * inch
+        y = self._write(c, spec.title, 0.75 * inch, h - 1.2 * inch, 9.5 * inch,
+                        0.6 * inch, 26, fg, True)
         for bullet in spec.bullets[:6]:
-            y = self._write(c, bullet, 1.0 * inch, y, 9.5 * inch, 15, fg)
+            y = self._write(c, bullet, 1.0 * inch, y, 9.5 * inch, 0.45 * inch, 15, fg)
             if y < 0.9 * inch:
                 break
 
     def _v4_page(self, c, spec, w, h, placement, path, card, accent, highlight, fg) -> None:
-        bullets = list(spec.bullets)[:4]
+        zones = layout_zones(placement)
+        image, content, footer = zones["image"], zones["content"], zones["footer"]
+        self._image(c, path, image[0] * inch, h - (image[1] + image[3]) * inch,
+                    image[2] * inch, image[3] * inch, card, accent)
         if placement == "hero_banner":
-            self._image(c, path, 0, h * 0.42, w, h * 0.58, card, accent)
             self._panel(c, 0, 0, w, h * 0.42, card, accent)
-            y = self._write(c, spec.title, 0.7 * inch, h * 0.42 - 0.45 * inch,
-                            w - 1.4 * inch, 36, fg, True)
         elif placement == "full_bleed_glass":
-            self._image(c, path, 0, 0, w, h, card, accent)
             self._panel(c, 0.85 * inch, 0.85 * inch, w * 0.62, h * 0.78, card, accent)
-            y = self._write(c, spec.title, 1.2 * inch, h * 0.78, w * 0.55, 44, fg, True)
         elif placement == "giant_stat_split":
-            self._image(c, path, w * 0.55, 0, w * 0.45, h, card, accent)
-            self._panel(c, 0, 0, w * 0.55, h, card, accent)
-            match = METRIC_RE.search(" ".join(bullets) or spec.title)
-            hero = match.group(0).strip() if match else spec.title[:10]
-            y = self._write(c, hero, 0.6 * inch, h - 1.0 * inch, w * 0.48, 76, highlight, True)
-            y = self._write(c, spec.title, 0.65 * inch, y, w * 0.48, 20, fg, True)
-            bullets = bullets[:3]
+            self._panel(c, 0, 0, image[0] * inch, h, card, accent)
         else:
-            right = placement == "split_right"
-            self._image(c, path, w * 0.5 if right else 0, 0, w * 0.5, h, card, accent)
-            self._panel(c, 0 if right else w * 0.5, 0, w * 0.5, h, card, accent)
-            x = 0.65 * inch if right else w * 0.5 + 0.65 * inch
-            y = self._write(c, spec.title, x, h - 0.95 * inch, w * 0.4, 40, fg, True)
+            panel_x = 0 if placement == "split_right" else image[0] * inch
+            self._panel(c, panel_x, 0, image[2] * inch, h, card, accent)
+
+        structured = [block for block in getattr(spec, "blocks", [])
+                      if block.kind in ("table", "steps")]
+        reserved = 1.05 if structured else 0.0
+        bottom_in = footer[1] - 0.15 - reserved
+        x = content[0] * inch
+        width = content[2] * inch
+        top = h - content[1] * inch
+        title_size = 76 if placement == "giant_stat_split" else (44 if placement == "full_bleed_glass" else 38)
+        title = spec.title
+        if placement == "giant_stat_split":
+            match = METRIC_RE.search(" ".join(spec.bullets) or spec.title)
+            title = match.group(0).strip() if match else spec.title[:10]
+        y = self._write(c, title, x, top, width, min(1.6 * inch, (bottom_in - content[1]) * inch),
+                        title_size, highlight if placement == "giant_stat_split" else fg, True,
+                        minimum=28 if placement == "giant_stat_split" else 26)
+        if placement == "giant_stat_split":
+            y = self._write(c, spec.title, x, y, width, 0.7 * inch, 20, fg, True)
+        bullets = list(spec.bullets)[:3 if placement == "giant_stat_split" else 4]
         for bullet in bullets:
-            y = self._write(c, bullet, x if placement in ("split_right", "split_left")
-                            else (0.65 * inch if placement == "giant_stat_split" else 0.7 * inch),
-                            y, w * 0.42 if placement.startswith("split") else w * 0.85,
-                            18 if placement.startswith("split") else 17, fg)
-            if y < 0.8 * inch:
+            capacity_in = max(0.25, bottom_in - (h - y) / inch)
+            y = self._write(c, bullet, x, y, width, min(0.55 * inch, capacity_in * inch),
+                            17, fg)
+            if y < footer[1] * inch:
                 break
+        if structured:
+            block_top = (footer[1] - reserved) * inch
+            for block in structured[:2]:
+                height = 0.4 * inch
+                self._panel(c, x, block_top - height, width, height, card,
+                            accent if block.kind == "table" else highlight)
+                self._write(c, block.text, x + 0.1 * inch, block_top - 0.04 * inch,
+                            width - 0.2 * inch, height - 0.08 * inch, 13, fg, minimum=11)
+                block_top -= height + 0.08 * inch

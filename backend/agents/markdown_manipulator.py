@@ -1,7 +1,7 @@
 ﻿"""Markdown Manipulator Agent - parses input text into semantic SlideSpecs."""
 import re
 
-from backend.agents.base.agent import BaseAgent, SlideSpec
+from backend.agents.base.agent import BaseAgent, SlideSpec, TextBlock
 from backend.agents.factory.agent_factory import AgentFactory
 
 METRIC_RE = re.compile(r"(?:\d+(?:\.\d+)?\s*%|\$\s?\d|\b\d+x\b|\bKPI\b|\brevenue\b|\bcost\b)", re.I)
@@ -55,6 +55,7 @@ class MarkdownManipulatorAgent(BaseAgent):
         current_notes = ""
         current_visual = ""
         current_image = ""
+        current_blocks: list[TextBlock] = []
 
         def commit() -> None:
             if not (current_bullets or current_title != "Overview"):
@@ -71,6 +72,8 @@ class MarkdownManipulatorAgent(BaseAgent):
                 emphasis_cue=cue,
                 visual_hint=current_visual.strip(),
                 image_spec=current_image.strip(),
+                blocks=list(current_blocks) + ([TextBlock("notes", current_notes.strip())]
+                                               if current_notes.strip() else []),
             ))
 
         for line in text.splitlines():
@@ -85,6 +88,7 @@ class MarkdownManipulatorAgent(BaseAgent):
                 current_notes = ""
                 current_visual = ""
                 current_image = ""
+                current_blocks = []
             elif VISUAL_RE.match(line_s):
                 current_visual = VISUAL_RE.match(line_s).group(1).strip()
             elif IMAGE_RE.match(line_s):
@@ -92,16 +96,21 @@ class MarkdownManipulatorAgent(BaseAgent):
             elif line_s.startswith(">"):
                 current_notes += line_s.lstrip("> ").strip() + " "
             elif NUMBERED_RE.match(line_s):
-                current_bullets.append(CODE_RE.sub(r"\1", line_s).strip())
+                text = CODE_RE.sub(r"\1", line_s).strip()
+                current_bullets.append(text)
+                current_blocks.append(TextBlock("steps", text))
             elif BULLET_RE.match(line_s):
                 bullet = BULLET_RE.sub("", line_s, count=1).strip()
                 if BOLD_RE.search(bullet):
                     current_bold.append(len(current_bullets))
-                current_bullets.append(CODE_RE.sub(r"\1", BOLD_RE.sub(r"\1", bullet)).strip(" |"))
+                text = CODE_RE.sub(r"\1", BOLD_RE.sub(r"\1", bullet)).strip(" |")
+                current_bullets.append(text)
+                current_blocks.append(TextBlock("bullets", text))
             elif line_s.startswith("|") and not re.fullmatch(r"[|\-: ]+", line_s):
-                bullet = " ".join(part.strip() for part in line_s.strip("|").split("|") if part.strip())
-                if bullet:
-                    current_bullets.append(bullet)
+                text = " ".join(part.strip() for part in line_s.strip("|").split("|") if part.strip())
+                if text:
+                    current_bullets.append(text)
+                    current_blocks.append(TextBlock("table", text))
         commit()
 
         if slides:

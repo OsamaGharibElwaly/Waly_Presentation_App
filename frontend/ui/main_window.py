@@ -8,12 +8,15 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QColor, QFont, QKeySequence, QPainter, QAction
 from PyQt6.QtWidgets import (
-    QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QScrollArea, QTabWidget, QToolBox,
-    QVBoxLayout, QWidget,
+    QComboBox, QDockWidget, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
+    QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QScrollArea, QTabWidget,
+    QToolBox, QVBoxLayout, QWidget,
 )
 
+from backend.agents.image_factory_agent import load_manifest
+from backend.layout.geometry import ZONES, layout_zones, rects_intersect
 from frontend.ui.export_worker import ExportWorker
+from frontend.ui.right_inspector import RightInspectorPanel
 from backend.pptx_engine.style_prompt import compose_style_prompt
 from frontend.theme_factory.animation_registry import AnimationRegistry
 from frontend.theme_factory.catalog import INDUSTRIES
@@ -401,6 +404,43 @@ class MainWindow(QMainWindow):
         export_action.triggered.connect(lambda _checked=False: self._export("pptx"))
         self.addAction(export_action)
 
+        self.inspector = RightInspectorPanel(
+            summary=self._transition_summary(), manifest=load_manifest(),
+        )
+        dock = QDockWidget("Right Inspector", self)
+        dock.setObjectName("RightInspectorDock")
+        dock.setWidget(self.inspector)
+        dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+        self.inspector.exportRequested.connect(self._export)
+        self.inspector.manifestRefreshRequested.connect(self._refresh_manifest)
+        self._sync_inspector()
+
+    def _transition_summary(self) -> str:
+        design = self.design_combo.currentText() if hasattr(self, "design_combo") else ""
+        animation = self.animation_combo.currentText() if hasattr(self, "animation_combo") else ""
+        mode = self.animation_mode_combo.currentText() if hasattr(self, "animation_mode_combo") else ""
+        return f"Design: {design or 'default'}  |  Animation: {animation or 'off'}  |  Mode: {mode or 'off'}"
+
+    def _refresh_manifest(self) -> None:
+        self.inspector.set_manifest(load_manifest(refresh=True))
+
+    def _sync_inspector(self) -> None:
+        if not hasattr(self, "inspector") or not hasattr(self, "md_editor"):
+            return
+        text = self.md_editor.toPlainText()
+        slides = len(re.findall(r"^##\s+", text, flags=re.MULTILINE))
+        bullets = len(re.findall(r"^\s*(?:[-*]|\d+[.)])\s+", text, flags=re.MULTILINE))
+        placement = tuple(ZONES)[slides % len(ZONES)]
+        zones = layout_zones(placement)
+        overlap = rects_intersect(zones["content"], zones["footer"], 0.2)
+        warning = "text overlap detected" if overlap or bullets > 12 else ""
+        self.inspector.set_preview(placement, warning)
+        self.inspector.set_text_status(
+            f"{slides} slides, {bullets} blocks - {warning or 'zones disjoint'}"
+        )
+        self.inspector.set_summary(self._transition_summary())
+
     @staticmethod
     def _wrap_tab(tab: QWidget) -> QScrollArea:
         scroll = QScrollArea()
@@ -687,6 +727,7 @@ class MainWindow(QMainWindow):
         bullets = len(re.findall(r"^\s*[-*]\s+", text, flags=re.MULTILINE))
         words = len(text.split())
         self.stats_lbl.setText(f"{slides} slides  |  {bullets} bullets  |  {words} words")
+        self._sync_inspector()
 
     def _insert_slide_template(self) -> None:
         text = self.md_editor.toPlainText()
@@ -761,6 +802,7 @@ class MainWindow(QMainWindow):
     def _on_export_progress(self, value: int, message: str) -> None:
         self.progress_bar.setValue(value)
         self.status_lbl.setText(f"Exporting - {message} ({value}%)")
+        self.inspector.set_progress(value, message)
 
     def _on_export_failed(self, message: str) -> None:
         QMessageBox.critical(self, "Export failed", message)
