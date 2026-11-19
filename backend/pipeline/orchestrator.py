@@ -4,6 +4,7 @@ from backend.agents.factory.agent_factory import AgentFactory
 from backend.agents.base.agent import AgentContext
 from backend.pptx_engine.builder import PptxBuilder
 from backend.pdf_engine.builder import PdfBuilder
+from backend.pptx_engine.layout_router import route_layouts
 
 class Orchestrator:
     def __init__(self, theme: dict, palette: dict, meta: dict | None = None) -> None:
@@ -12,6 +13,8 @@ class Orchestrator:
 
     def run(self, markdown_text: str, target: Path) -> None:
         slides = self.md_agent.run(markdown_text)
+        for slide, layout in zip(slides, route_layouts([item.layout_type for item in slides])):
+            slide.layout_type = layout
         suffix = target.suffix.lower()
         if suffix == ".pptx":
             builder = PptxBuilder(self.ctx)

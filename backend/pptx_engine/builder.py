@@ -11,6 +11,7 @@ Animation modes:
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from lxml import etree
@@ -236,6 +237,9 @@ class PptxBuilder:
         """Yield (spid, preset, subtype, trigger, duration, delay, filter)."""
         choreography = (self.animation or {}).get("choreography") or {}
         intensity_scale = {"subtle": 0.7, "balanced": 1.0, "dynamic": 1.3}.get(self.intensity, 1.0)
+        focal_ids = self._groups.get("focal", [])
+        if focal_ids:
+            yield (focal_ids[0], 23, 16, "withEffect", int(350 * intensity_scale), 0, "fade")
         for effect in choreography.get("effects", []):
             spids = self._groups.get(effect.get("group"), [])
             if not spids:
@@ -493,13 +497,129 @@ class PptxBuilder:
         prs.save(str(target))
 
     def _render(self, slide, spec, bullets, stage) -> None:
-        renderer = getattr(self, "render_" + self.sid, None)
+        layout = getattr(spec, "layout_type", "")
+        renderer = getattr(self, "render_semantic_" + layout, None) if layout else None
         if renderer is None:
-            renderer = self.render_glassmorphism_card
+            renderer_id = "swiss_grid_editorial" if self.sid == "swiss_grid_editorial_archetype" else self.sid
+            renderer = getattr(self, "render_" + renderer_id, None) or self.render_glassmorphism_card
         renderer(slide, spec, list(bullets), stage)
         if stage:
             self.text(slide, stage.upper(), 9.25, 0.30, 3.6, 0.28, 9,
                       self.accent, True, PP_ALIGN.RIGHT, MONO_FONT, "stamp")
+
+    def _is_focal(self, spec, index: int) -> bool:
+        focal = getattr(spec, "focal_index", None)
+        return focal == index or (focal is None and index == 0)
+
+    @staticmethod
+    def _metric(bullet: str) -> str:
+        match = re.search(r"[$€£]?\s?\d+(?:\.\d+)?\s?(?:%|x\b|days\b|hours\b|points\b|slides\b)?", bullet, re.I)
+        return match.group(0).strip() if match else ""
+
+    def render_semantic_bento(self, slide, spec, bullets, stage):
+        self.text(slide, self.clip(spec.title, 68), 0.8, 0.4, 11.7, 0.7, 26, self.accent, True,
+                  group="header")
+        tiles = ((0.8, 1.3, 5.6, 5.45), (6.65, 1.3, 5.88, 2.6), (6.65, 4.2, 5.88, 2.55))
+        groups = ([0], [1, 2], [3, 4])
+        labels = ("CORE ARCHITECTURE", "PERFORMANCE METRICS", "EDGE CONSTRAINTS")
+        for (x, y, w, h), indices, label in zip(tiles, groups, labels):
+            focal_here = any(self._is_focal(spec, i) for i in indices if i < len(bullets))
+            self.shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h, self.card_color,
+                       self.accent if focal_here else self.highlight, 3.0 if focal_here else 1.0,
+                       "focal" if focal_here else "items")
+            self.text(slide, label, x + 0.25, y + 0.2, w - 0.5, 0.35, 13,
+                      self.accent if focal_here else self.highlight, True, group="header")
+            yy = y + 0.72
+            for i in indices:
+                if i < len(bullets):
+                    self.text(slide, self.clip(bullets[i], 105 if w > 5.7 else 72),
+                              x + 0.25, yy, w - 0.55, 1.15, 15 if w > 5.7 else 13.5,
+                              self.fg, group="items")
+                    yy += 1.25
+
+    def render_semantic_kpi(self, slide, spec, bullets, stage):
+        self.text(slide, self.clip(spec.title, 68), 0.8, 0.4, 11.7, 0.7, 26, self.accent, True,
+                  group="header")
+        for index, x in enumerate((0.8, 4.816, 8.833)):
+            focal = self._is_focal(spec, index)
+            fill = self.accent if focal else self.card_color
+            foreground = self.accent_fg if focal else self.fg
+            self.shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, 1.3, 3.7, 2.55, fill,
+                       self.accent if focal else self.highlight, 3.0 if focal else 1.0,
+                       "focal" if focal else "items")
+            bullet = bullets[index] if index < len(bullets) else ""
+            value = self._metric(bullet) or self.clip(bullet, 12) or "\u2014"
+            self.text(slide, value, x + 0.2, 1.7, 3.3, 0.9, 38, self.accent_fg if focal else self.accent,
+                      True, PP_ALIGN.CENTER, group="items")
+            self.text(slide, self.clip(bullet, 72), x + 0.2, 2.85, 3.3, 0.75, 13, foreground,
+                      align=PP_ALIGN.CENTER, group="items")
+        self.shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, 0.8, 4.15, 11.73, 2.55,
+                   self.card_color, self.highlight, 1.0, "items")
+        self.text(slide, "SYNTHESIS", 1.1, 4.35, 10.8, 0.35, 14, self.highlight, True, group="header")
+        yy = 4.85
+        for item in (bullets[3:6] or bullets[:3]):
+            self.text(slide, f"\u25aa {self.clip(item, 108)}", 1.15, yy, 10.9, 0.52, 15,
+                      self.fg, group="items")
+            yy += 0.58
+
+    def render_semantic_process(self, slide, spec, bullets, stage):
+        self.text(slide, self.clip(spec.title, 70), 0.85, 0.4, 11.6, 0.7, 26, self.accent, True,
+                  group="header")
+        phases = bullets[:4] or ["Define phase"]
+        for index in range(4):
+            x = 0.8 + index * 2.95
+            focal = self._is_focal(spec, index)
+            fill = self.accent if focal else (self.highlight if index % 2 else self.card_color)
+            chevron = self.shape(slide, MSO_SHAPE.CHEVRON, x, 1.4, 2.85, 1.15, fill,
+                                 self.accent if focal else None, 3.0 if focal else 1.0,
+                                 "focal" if focal else "items")
+            label = self.clip(phases[index], 22) if index < len(phases) else f"PHASE {index + 1:02d}"
+            self.text(slide, label, x + 0.3, 1.7, 2.2, 0.55, 14, readable_text(fill), True,
+                      PP_ALIGN.CENTER, group="items")
+            self.shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, 2.95, 2.75, 3.75,
+                       self.card_color, self.accent if focal else self.highlight,
+                       3.0 if focal else 1.0, "items")
+            detail = self.clip(phases[index], 100) if index < len(phases) else "Gate criterion pending."
+            self.text(slide, detail, x + 0.2, 3.25, 2.4, 3.1, 13.5, self.fg, group="items")
+
+    def render_semantic_comparison(self, slide, spec, bullets, stage):
+        self.text(slide, self.clip(spec.title, 70), 0.85, 0.4, 11.6, 0.7, 26, self.accent, True,
+                  PP_ALIGN.CENTER, group="header")
+        middle = (len(bullets) + 1) // 2
+        left, right = bullets[:middle], bullets[middle:]
+        left_focal = any(self._is_focal(spec, i) for i in range(len(left)))
+        for x, items, focal, label in ((0.8, left, left_focal, "BASELINE / CURRENT"),
+                                       (6.983, right, not left_focal, "TARGET / PROPOSED")):
+            self.shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, 1.35, 5.55, 5.4,
+                       self.card_color, self.accent if focal else self.highlight,
+                       3.0 if focal else 1.0, "focal" if focal else "items")
+            self.text(slide, label, x + 0.3, 1.6, 5.0, 0.4, 18,
+                      self.accent if focal else self.highlight, True, group="header")
+            yy = 2.35
+            for item in items[:5]:
+                self.text(slide, f"\u25aa {self.clip(item, 62)}", x + 0.3, yy, 4.95, 0.68,
+                          15, self.fg, group="items")
+                yy += 0.88
+        self.shape(slide, MSO_SHAPE.OVAL, 6.266, 3.8, 0.8, 0.8, self.accent, group="accent")
+        self.text(slide, "VS", 6.266, 3.96, 0.8, 0.4, 17, self.accent_fg, True,
+                  PP_ALIGN.CENTER, group="accent")
+
+    def render_semantic_spotlight(self, slide, spec, bullets, stage):
+        focal_index = getattr(spec, "focal_index", 0) or 0
+        focal_text = bullets[focal_index] if focal_index < len(bullets) else (bullets[0] if bullets else "")
+        self.shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, 0.8, 1.3, 6.4, 5.45, self.accent,
+                   self.accent, 3.0, "focal")
+        self.text(slide, "KEY TAKEAWAY", 1.15, 1.6, 5.6, 0.4, 14, self.accent_fg, True,
+                  group="header")
+        self.text(slide, self.clip(focal_text, 150), 1.15, 2.25, 5.7, 2.0, 22,
+                  self.accent_fg, True, group="items")
+        rest = [item for index, item in enumerate(bullets) if index != focal_index]
+        for index, item in enumerate(rest[:4]):
+            y = 1.3 + index * 1.38
+            self.shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, 7.45, y, 5.08, 1.16,
+                       self.card_color, self.highlight, 1.0, "items")
+            self.text(slide, self.clip(item, 88), 7.7, y + 0.18, 4.6, 0.85, 14,
+                      self.fg, group="items")
 
     # ------------------------------------------------------------- archetypes
     def render_blueprint_cad_grid(self, slide, spec, bullets, stage):
@@ -639,7 +759,7 @@ class PptxBuilder:
             y += 0.98
 
     def render_glassmorphism_card(self, slide, spec, bullets, stage):
-        for x, y in ((10.4, 0.7), (0.75, 5.55)):
+        for x, y in ((10.4, 0.7), (0.75, 4.55)):
             self.shape(slide, MSO_SHAPE.OVAL, x, y, 2.6, 2.6, self.highlight, group="accent")
         self.shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, 0.9, 0.85, 11.533, 5.8,
                    self.card_color, self.accent, 1.75, "frame")

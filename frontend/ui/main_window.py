@@ -351,8 +351,8 @@ class MainWindow(QMainWindow):
 
         self.tabs = QTabWidget()
         root.addWidget(self.tabs, 1)
-        self.tabs.addTab(self._build_studio_tab(), "1. Industry & Design Studio")
-        self.tabs.addTab(self._build_markdown_tab(), "2. Markdown AI Input")
+        self.tabs.addTab(self._wrap_tab(self._build_studio_tab()), "1. Industry & Design Studio")
+        self.tabs.addTab(self._wrap_tab(self._build_markdown_tab()), "2. Markdown AI Input")
 
         actions = QHBoxLayout()
         load_btn = QPushButton("Load Markdown")
@@ -389,6 +389,18 @@ class MainWindow(QMainWindow):
         export_action.setShortcut(QKeySequence("Ctrl+Return"))
         export_action.triggered.connect(lambda _checked=False: self._export("pptx"))
         self.addAction(export_action)
+
+    @staticmethod
+    def _wrap_tab(tab: QWidget) -> QScrollArea:
+        scroll = QScrollArea()
+        scroll.setWidget(tab)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet(
+            "QScrollArea { background: transparent; color: #F8FAFC; }"
+            "QWidget { background: transparent; }"
+        )
+        return scroll
 
     def _build_studio_tab(self) -> QWidget:
         tab = QWidget()

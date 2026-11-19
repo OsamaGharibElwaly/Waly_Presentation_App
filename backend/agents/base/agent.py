@@ -12,6 +12,9 @@ class SlideSpec:
     title: str
     bullets: list[str]
     notes: str = ""
+    layout_type: str = ""
+    focal_index: int | None = None
+    emphasis_cue: str = ""
 
 class BaseAgent:
     def __init__(self, ctx: AgentContext | None = None) -> None:
